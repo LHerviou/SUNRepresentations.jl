@@ -16,7 +16,6 @@ function tryread(::Type{T}, s1::SUNIrrep{N}, s2::SUNIrrep{N}, s3::SUNIrrep{N}) w
     fn = cgc_cachepath(s1, s2, T) * ".jld2"
     isfile(fn) || return nothing
     
-    
     mkpidlock(fn * ".pid"; stale_age=_PID_STALE_AGE) do
         try
             return jldopen(fn, "r"; parallel_read=true) do file
@@ -146,20 +145,14 @@ function disk_cache_info(io::IO=stdout; clean = false)
             n_entries = 0
             for (root, _, files) in walkdir(fldr_T)
                 for f in files
+                    ##Ensure that the process continues if some file are corrupted. Added the option (off by default) of removing the stale/incorrect files.
                     try
                          n_entries += jldopen(file -> length(keys(file)), joinpath(root, f), "r")
                          n_bytes += filesize(joinpath(root, f))
                     catch e
-                         println(io, "Error in file $(joinpath(root, f)) : $e")
-                   
+                         println(io, "Error in file $(joinpath(root, f)) : $e")                   
                          if clean
-                             rep, ext = split(f, ".")
-                             if isfile(joinpath(root, rep*".jld2"))
-                             	run(`rm $(joinpath(root, rep*".jld2"))`)
-                             end
-                             if isfile(joinpath(root, rep*".pid"))
-                                run(`rm $(joinpath(root, rep*".pid"))`)
-                             end
+                             rm(joinpath(root, f), force=true)
                          end
                     end
                 end
@@ -179,7 +172,6 @@ Print information about the CGC cache.
 function cache_info(io::IO=stdout)
     ram_cache_info(io)
     println(io)
-    println("Blah")
     disk_cache_info(io)
     return nothing
 end
