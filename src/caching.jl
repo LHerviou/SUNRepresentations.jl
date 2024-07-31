@@ -15,22 +15,6 @@ end
 function tryread(::Type{T}, s1::SUNIrrep{N}, s2::SUNIrrep{N}, s3::SUNIrrep{N}) where {T,N}
     fn = cgc_cachepath(s1, s2, T) * ".jld2"
     isfile(fn) || return nothing
-
-    try
-        return jldopen(fn, "r"; parallel_read=true) do file
-            @debug "loaded CGC from disk: $s1 ⊗ $s2 → $s3"
-            !haskey(file, _key(s3)) && return nothing
-            return file[_key(s3)]::SparseArray{T,4}
-        end
-    catch
-    end
-
-    return nothing
-end
-
-function tryread_new(::Type{T}, s1::SUNIrrep{N}, s2::SUNIrrep{N}, s3::SUNIrrep{N}) where {T,N}
-    fn = cgc_cachepath(s1, s2, T) * ".jld2"
-    isfile(fn) || return nothing
     
     
     mkpidlock(fn * ".pid"; stale_age=_PID_STALE_AGE) do
@@ -49,7 +33,7 @@ end
 
 #= wait at most 1 min before deciding to overwrite. This should avoid deadlocking if a
 process started writing but got killed before removing the pidfile. =#
-const _PID_STALE_AGE = 120.0
+const _PID_STALE_AGE = 60.0
 
 function generate_all_CGCs(::Type{T}, s1::SUNIrrep{N}, s2::SUNIrrep{N}) where {T,N}
     @debug "Generating CGCs: $s1 ⊗ $s2"
